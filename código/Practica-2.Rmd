@@ -1,0 +1,365 @@
+---
+title: "Tipología y ciclo de vida de los datos - Práctica 2"
+author: "Paula Moreno y David Cosialls"
+date: '`r format(Sys.Date(),"%e de %B, %Y")`'
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: paper
+    toc: yes
+    toc_depth: 2
+---
+
+# Introducción
+
+El objetivo de esta práctica es identificar los datos relevantes en un proyecto analítico y usar las herramientas de integración, limpieza, validación y análisis de los datos. Para ello vamos a utilizar un dataset que hemos obtenido de la plataforma Kagle. Los datos que hemos elegido son los siguiente: <https://www.kaggle.com/datasets/arashnic/fitbit>
+
+Este dataset nos presenta un conjunto de datos recolectados desde un smartwatch que recoge la información de salud de su usuario. Tenemos información relativa al ritmo cardíaco, al sueño, nivel de actividad física, calorías consumidas, el peso y los pasos realizados.
+
+**\<Falta explicar más sobre los datos y la finalidad\>**
+
+# Carga de los archivos
+
+El primer paso es leer el dataset para poder empezar a tratar los datos. En nuestro caso concreto vamos a utilizar los datos de tres archivos diferentes:
+
+-   dailyActivity_merged.csv
+
+-   heartrate_seconds_merged.csv
+
+-   sleepDay_merged.csv
+
+```{r}
+df_activity <- read.csv('../datos originales/dailyActivity_merged.csv')
+df_heartrate <- read.csv('../datos originales/heartrate_seconds_merged.csv')
+df_sleep <- read.csv('../datos originales/sleepDay_merged.csv')
+```
+
+```{r}
+length(unique(df_activity$Id))
+
+```
+
+```{r}
+length(unique(df_heartrate$Id))
+```
+
+```{r}
+length(unique(df_sleep$Id))
+```
+
+```{r}
+length(intersect(unique(df_sleep$Id),intersect(unique(df_activity$Id),unique(df_heartrate$Id))))
+```
+
+# Limpieza de los datos
+
+## Unificar los datasets
+
+```{r}
+head(df_activity)
+```
+
+```{r}
+head(df_heartrate)
+```
+
+```{r}
+head(df_sleep)
+```
+
+Como hemos podido observar tenemos 12 id's que coincidan en los tres datasets, por lo que unificaremos en base a ese id y a la fecha del registro. En los tres dataset tenemos tres formatos de fechas diferentes. Para poder unificarlos lo que haremos será, en el caso del dataset del sueño quitar la hora ya que todos los registros son de la misma hora, solo cambia el día. En el caso del dataset del ritmo cardíaco calcularemos la media por día y será ese dato el que incluiremos en el dataset de la actividad general.
+
+Pero primero debemos comprobar que los tipos de datos que tenemos en el datset de activity es el adecuado. Como podemos observar el tipo de dato de las fechas es un string por lo que lo transformaremos a tipo date:
+
+```{r}
+str(df_activity)
+```
+
+Tenemos 31 fechas diferentes en el formato ingles, es decir, MM/DD/YYYY primero el mes y después el día:
+
+```{r}
+unique(df_activity$ActivityDate)
+```
+
+```{r}
+sum(is.na(df_activity$ActivityDate))
+```
+
+```{r}
+df_activity$ActivityDate <- as.Date(df_activity$ActivityDate,format="%m/%d/%Y")
+```
+
+```{r}
+str(df_activity)
+```
+
+Una vez ya tenemos el tipo de dato adecuado realizaremos el mismo proceso para el dataset del sueño, pero en este caso debemos quitar la hora:
+
+```{r}
+str(df_sleep)
+```
+
+```{r}
+df_sleep$ActivityDate <- as.Date(df_sleep$SleepDay,format = "%m/%d/%Y")
+df_sleep <- df_sleep[,-which(names(df_sleep) == "SleepDay")]
+```
+
+De esta forma tenemos el mismo formato de fecha y el mismo nombre para la columna que con el dataset de activad. De esta forma podremos hacer el merge de ambos datasets utilizando las variables de id y fecha como criterio.
+
+```{r}
+str(df_sleep)
+```
+
+```{r}
+df <- merge(df_activity,df_sleep,by=c("Id","ActivityDate"))
+```
+
+```{r}
+head(df)
+```
+
+Ya tenemos un dataset donde hemos podido unir el dataset de actividad con el de sueño. Ahora debemos hacer lo mismo con el dataset del ritmo cardíaco. Para este caso debemos transformar la fecha en tipo date y calcular la media para cada día, será este dato el que uniremos a nuestro nuevo dateset.
+
+```{r}
+str(df_heartrate)
+```
+
+```{r}
+df_heartrate$ActivityDate <- as.Date(df_heartrate$Time,format = "%m/%d/%Y")
+```
+
+```{r}
+str(df_heartrate)
+```
+
+Una vez obtenida solo la fecha vamos a generar un nuevo dataset con la media:\
+
+```{r}
+df_heartrate_mean <- aggregate(Value ~ ActivityDate+Id, data=df_heartrate, FUN=mean)
+names(df_heartrate_mean)[3]<-"HeartrateMean"
+head(df_heartrate_mean)
+```
+
+Ahora ya podemos hacer el merge:
+
+```{r}
+df <- merge(df,df_heartrate_mean,by=c("Id","ActivityDate"))
+head(df)
+```
+
+Ahora ya tenemos un dataset con todos los datos unificados.
+
+## Datos vacíos
+
+En este apartado vamos a comprobar que toda la información que tenemos esta completa y que no hay datos vacíos:
+
+```{r}
+str(df)
+```
+
+```{r}
+summary(df)
+```
+
+En el summary podemos observar que no hay datos NA pero si que hay tres columnas que podemos sospechar que aporten muy poca información, se trata de las tres siguientes:
+
+-   LoggedActivitiesDistance
+
+-   SedentaryActiveDistance
+
+-   TotalSleepRecords
+
+Vamos a estudiar esas tres columnas para comprobar is aportan información al dataset o no:
+
+```{r}
+summary(df[,c("LoggedActivitiesDistance","SedentaryActiveDistance","TotalSleepRecords")])
+```
+
+```{r}
+sum(df$LoggedActivitiesDistance>0)
+```
+
+```{r}
+sum(df$SedentaryActiveDistance>0)
+```
+
+```{r}
+unique(df$TotalSleepRecords)
+```
+
+```{r}
+table(df$TotalSleepRecords)
+```
+
+En el caso de las variables LoggedActivitiesDistance y SedentaryActiveDistance la mayoria de datos observado son 0 por lo que apenas aportan información nueva por lo que vamos a quitar esas dos variables. Para el caso de TotalSleepRecords representa el numero de registros de sueño que se tienen de ese día para ese id. Pero luego tenemos el recuento total de tiempo que la persona ha dormido y el recuento total del tiempo que se a pasado tumbado. Por lo que esa columna no aporta información nueva. También la vamos a quitar:
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+df <- df[, -which(names(df) %in% c("LoggedActivitiesDistance","SedentaryActiveDistance","TotalSleepRecords"))]
+```
+
+## Valores atípicos y extremos
+
+Tras haber eliminado alguna de las variables vamos a volver a visualizar el resumen de todos los datos:
+
+```{r}
+summary(df)
+```
+
+El único caso que nos llama la atención sería el HeartrateMean, ya que un ritmo cardíaco de 104 es muy elevado pero no imposible por lo que lo podríamos considerar un valor atípico vamos a gráficar dicha variable para ver si es el caso:
+
+```{r}
+boxplot(df$HeartrateMean,main='Media del ritmo cardíaco',col='gray')
+```
+
+```{r}
+boxplot.stats(df$HeartrateMean)
+```
+
+Observamos que hay tres valores que podemos considerar extremos en nuestro dataset pero son casos posibles por lo que los mantendremos.
+
+Otro de los datos que nos pueden llamar la atención es el máximo de minutos dormidos, 775, que corresponde con casi 13 horas de sueño. Es un valor muy elevado pero posible por lo que tampoco es un error. Vamos a generar el mismo gráfico que para la variable anterior para ver cuantos valores alejados del resto obtenemos:
+
+```{r}
+boxplot(df$TotalMinutesAsleep,main='Minutos totales de sueño',col='gray')
+```
+
+En este caso observamos que tenemos casos atípicos tanto en el máximo como en el mínimo.
+
+```{r}
+boxplot.stats(df$TotalMinutesAsleep)
+```
+
+En todos los casos son datos que son posibles por lo que no son un error y los mantendremos en nuestro dataset.
+
+# Creación de nuevas variables
+
+Para nuestro caso de estudio vamos a crear una nueva variable condicional, es decir, un booleano que representará si esa persona a podido dormir mas de 8 horas. Ya que son las recomendadas:
+
+```{r}
+df$Sleep8h <- df$TotalMinutesAsleep>=8*60
+head(df)
+```
+
+Vamos a visualizar cuantos casos cumplen la condición que hemos descrito anteriormente:
+
+```{r}
+data_percentage  <- apply(table(df$Sleep8h),1,function(x){x/sum(table(df$Sleep8h))*100})
+barplot(data_percentage, main="Daily Activity",xlab="8 Hour sleep",col=c("darkblue","red")) 
+```
+
+Podemos observar que en la mayoría de los casos se duerme menos de 8 horas.
+
+También vamos a crear otra variable boolena que represente si una perosna es activa o no. La condición que debe cumplir es haber hecho 30 min de actividad muy activa y moderada, es decir que la suma de VeryActiveMinutes y FairlyActiveMinutes debe ser mayor a 30:
+
+```{r}
+df$IsActive <- ((df$VeryActiveMinutes+df$FairlyActiveMinutes)>=30)
+head(df)
+```
+
+Vamos a ver como se distribuyen los diferentes casos:
+
+```{r}
+data_percentage  <- apply(table(df$IsActive),1,function(x){x/sum(table(df$IsActive))*100})
+barplot(data_percentage, main="Daily Activity",xlab="Is Active",col=c("darkblue","red"))
+```
+
+Podemos ver que se distribuye de forma muy diferente a la de Sleep8h en esta caso podemos ver que hay más gente activa que no.
+
+```{r}
+write.csv(df,"../datos_finales.csv")
+```
+
+# Análisis de datos
+
+## Selección de grupos
+
+Para nuestro caso de estudio queremos comprobar como afecta la actividad física y el tipo de actividad a nuestro nivel de sueño. Para ello vamos a utilizar las variables que muestran el numero de minutos por tipo de actividad:
+
+-   muy activa
+
+-   algo activa
+
+-   poco activa
+
+-   sedentaria
+
+También vamos a utilizar las variables donde vemos reflejados el tiempo de sueño (TotalMinutesAsleep), la variable booleana que hemos creado en el apartado anterior. Representa si esa persona ha podido dormir más de ocho horas o no. Y la variable que representa si una persona es activa o no.
+
+```{r}
+head(df[c("Id","ActivityDate","VeryActiveMinutes","FairlyActiveMinutes","LightlyActiveMinutes", "SedentaryMinutes","TotalMinutesAsleep","Sleep8h","IsActive" )])
+```
+
+## Normalidad y homogeneidad de la varianza
+
+Primero vamos a comprobar la normalidad y la homogeneidad de la varizanza de la variable sobre la que queremos hacer el estudio. En este caso concreto los minutos de sueño.
+
+Antes de nada vamos a graficar la variable para observar que tipo de distribución sigue:
+
+```{r}
+library(ggplot2)
+ggplot(df,aes(x=TotalMinutesAsleep))+geom_density()
+```
+
+Si solo nos centramos en la parte central de la gráfica si que podríamos decir que sigue una distribución normal pero en la parte izquierda de la gráfica hay un pico de casos por lo que no podemos afirmarlo.
+
+Vamos a mostrar el gráfico QQ plot para confirmar si la variable sigue una distribución normal:
+
+```{r}
+qqnorm(df$TotalMinutesAsleep, pch = 1, frame = FALSE)
+qqline(df$TotalMinutesAsleep, col = "steelblue", lwd = 2)
+```
+
+Para que los datos sigan una distribución normal los puntos deben ajustarse a la distribución teórica, que sería la linea diagonal. Como podemos observar en el gráfico no es el caso.
+
+Igualmente como se trata de una muestra mayor a 30 observaciones, por lo que podemos aplicar el teorema central del limite y decir que la media sigue una distribución normal.
+
+Para comprobar la homogeneidad de la variaranza también llamada homoscedasticidad vamos a aplicar el test de Levene. Un supuesto que hay que cumplir para poder aplicar este test que que la variable siga una distribución normal. Como hemos explicado en el párrafo anterior utilizando el teorema central del limite podemos afirmar que la muestra sigue una distribución normal.
+
+Lo siguiente que vamos a comprobar es si la varianza estadística de la variable TotalMinutesAsleep es igual o no a la varianza de la variable IsActive, que representa si una persona ha sido activa a lo largo del día o no. Consideremos que es activa si ha realizado 30 minutos o mas de actividad intensa o moderada.
+
+```{r}
+library(car)
+df$IsActive <- as.factor(df$IsA)
+leveneTest(TotalMinutesAsleep~IsActive,df)
+```
+
+Obtenemos un p-valor mayor a 0.05, por lo que aceptamos la hipotiposis nula de homocedasticidad y concluimos que la varaible TotalMinutesAsleep tiene un varizanza estadísticamente similar a si una persona es activa o no.
+
+## Contraste de hipótesis
+
+Una vez que ya hemos probado la normalidad y la homocedasticidad de las variables que queremos comprobar podemos aplicar el test de T de Student para compara las variables de IsActive y TotalMinuesAsleep.
+
+```{r}
+t.test(TotalMinutesAsleep~IsActive,df)
+```
+
+El p-valor obtenido es menor a 0.05, es decir es menor al nivel de significancia, por lo que podemos decir que se observan estadísticamente significativas entre los grupos de datos IsActive y TotalMinuesAsleep.
+
+## Correlación
+
+El coeficiente de correlación es una medida de la asociación entre dos variables. Este puede tomar valores entre -1 y 1, donde los extremos indican una correlación perfecta y el 0 indica la ausencia de correlación. El signo es negativo cuando valores elevados de una variable se asocian con valores pequeños de la otra, y el signo es positivo cuando ambas variables tienden a incrementar o disminuir simultáneamente.
+
+Vamos a comprobar si hay correlación entre la variable de minutos totales que una persona a dormido y si es activa o no. Este coeficiente solo se puede calcular con variables numéricas. Por lo que como hemos utilizado la suma de los minutos de activada para crear la variable boolena IsActive vamos a calcular el coeficiente de correlación con ese mismo valor.
+
+```{r}
+cor.test(df$TotalMinutesAsleep,(df$VeryActiveMinutes+df$FairlyActiveMinutes))
+```
+
+Obtenemos un nivel de correlación de -0.087, este valor esta bastante alejado de -1 por lo que el nivel de correlación es muy bajo.
+
+## Regresión
+
+La regresión lineal es un modelo matemático que tiene como objetivo aproximar la relación de dependencia lineal entre una variable dependiente y una (o una serie) de variables independientes.
+
+Vamos a comprobar si podemos estimar el número de total de minutos dormidos a partir de los minutos de activdidad
+
+```{r}
+ml = lm(TotalMinutesAsleep~VeryActiveMinutes+FairlyActiveMinutes+LightlyActiveMinutes+SedentaryMinutes,data=df)
+summary(ml)
+```
+
+La medida de calidad del modelo es R-squared, toma valores entre 0 y 1. En nuestro caso toma un valor de 0.4417, es decir, nuestro modelo puede explicar el 44.17% de la variabilidad observada.
+
+# Conclusiones
