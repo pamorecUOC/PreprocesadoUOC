@@ -19,6 +19,8 @@ Este dataset nos presenta un conjunto de datos recolectados desde un smartwatch 
 
 **\<Falta explicar más sobre los datos y la finalidad\>**
 
+Este dataset nos presenta un conjunto de datos recolectados desde un smartwatch que recoge la información de salud de su usuario. Tenemos información relativa al ritmo cardíaco, al sueño, nivel de actividad física, calorías consumidas, el peso y los pasos realizados.
+
 # Carga de los archivos
 
 El primer paso es leer el dataset para poder empezar a tratar los datos. En nuestro caso concreto vamos a utilizar los datos de tres archivos diferentes:
