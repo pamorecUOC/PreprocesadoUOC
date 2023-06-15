@@ -17,9 +17,15 @@ El objetivo de esta práctica es identificar los datos relevantes en un proyecto
 
 Este dataset nos presenta un conjunto de datos recolectados desde un smartwatch que recoge la información de salud de su usuario. Tenemos información relativa al ritmo cardíaco, al sueño, nivel de actividad física, calorías consumidas, el peso y los pasos realizados.
 
-**\<Falta explicar más sobre los datos y la finalidad\>**
+Este dataset contiene tres archivos .csv que explicamos a continuación: 
 
-Este dataset nos presenta un conjunto de datos recolectados desde un smartwatch que recoge la información de salud de su usuario. Tenemos información relativa al ritmo cardíaco, al sueño, nivel de actividad física, calorías consumidas, el peso y los pasos realizados.
+-   El primer archivo, dailyActivity_merged.csv, trata sobre la actividad diaria de un usuario y, contiene los datos sobre el número de pasos realizados, la distancia total recorrida, y diversos datos que categorizan el tipo de actividad que se ha realizado midiendolas en tiempo y distancia, además de las calorías que ha quemado. Un ejemplo, es un usuario que a lo largo de un día ha realizado 13.162 pasos, con una distancia total recorrida de 8.5 Km. De estos 8.5 Km, 1.87 Km se han realizado en una alta intensidad, 0.5 Km en una intensidad moderada y el resto, 6.05 Km en un paso tranquilo, caminando. Se cuantifica que el usuario ha estado 25 minutos muy activo, 13 min. bastante activo, 328 min. algo activo y 728 en modo sedentario. En total en este periodo de actividad ha consumido 1985 calorías. 
+
+-   El segundo archivo, sleepDay_merged.csv, trata sobre el sueño durante un día de un usuario. Los datos que se recogen en este dataset son el día que grabó el sueño, cuántas veces se grabó, cuántos minutos ha dormido y cuánto tiempo ha estado en la cama. Por ejemplo este usuario el día 12 de abril del 2016, grabó 1 etapa de sueño donde estuvo en la cama durante 346 minutos de los cuales 327 los pasó durmiendo. 
+
+-   El tercer archivo, heartrate_second_merged.csv, trata sobre el registro del pulso cada 5 segundos durante el transcurso de varios días. La primera muestra de este dataset muestra que el usuario el día 12 de abril del 2016 tenía un pulso cardíaco de 97 pulsaciones por minuto a las 7:21:00 de la mañana. 
+
+El objetivo de analizar estos tres datasets es comprobar la correlación que existe entre la actividad y el pulso que un usuario registra a lo largo del día y cómo afecta a la calidad del sueño. Para ello vamos a utilizar estos tres datasets que nos brindan la oportunidad de tratar con datos reales de un usuario.
 
 # Carga de los archivos
 
@@ -365,3 +371,7 @@ summary(ml)
 La medida de calidad del modelo es R-squared, toma valores entre 0 y 1. En nuestro caso toma un valor de 0.4417, es decir, nuestro modelo puede explicar el 44.17% de la variabilidad observada.
 
 # Conclusiones
+
+Una vez realizado el estudio, podemos concluir que a pesar de que pensábamos el tiempo del sueño iba completamente relacionado con la actividad física del usuario, esto no es así ya que en el estudio del coeficiente de correlación nos da un índice de -0,087, un valor muy alejado del -1 esperado, y en el test de T de Student el valor p-valor obtenido es menor de  0.05, por lo tanto nos contradice con nuestra hipótesis. 
+
+En un estudio futuro, deberíamos realizar el estudio con la calidad del sueño, teniendo en cuenta cuánto de ese tiempo dormido pertenece a los diferentes estadios del sueño, fase del sueño ligero, etapa de transición, sueño profundo y fase REM. También podríamos considerar la relación entre el tiempo que el usuario pasa en la cama respecto al tiempo dormido e incorporar el registro del pulso durante los diferentes estadios del sueño para determinar el nivel de estrés.
